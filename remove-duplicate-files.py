@@ -218,14 +218,20 @@ class FileComparisonUI:
         hash_map = {}
         
         # Count total files first
-        total_files = sum(len(files) for _, _, files in os.walk(dir1))
+        if self.include_subfolders.get():
+            total_files = sum(len(files) for _, _, files in os.walk(dir1))
+        else:
+            total_files = len([f for f in os.listdir(dir1) if os.path.isfile(os.path.join(dir1, f))])
         processed_files = 0
         
+        if self.include_subfolders.get():
+            walk_iter = os.walk(dir1)
+        else:
+            # Only process files in the root directory
+            walk_iter = [(dir1, [], [f for f in os.listdir(dir1) if os.path.isfile(os.path.join(dir1, f))])]
+
         # Scan directory and calculate hashes
-        for root, _, filenames in os.walk(dir1):
-            if not self.include_subfolders.get() and root != dir1:
-                continue
-                
+        for root, _, filenames in walk_iter:
             for filename in filenames:
                 filepath = os.path.join(root, filename)
                 processed_files += 1
@@ -272,13 +278,23 @@ class FileComparisonUI:
         files2_map = {}
         
         # Count total files
-        total_files = sum(len(files) for _, _, files in os.walk(dir1))
-        total_files += sum(len(files) for _, _, files in os.walk(dir2))
+        if self.include_subfolders.get():
+            total_files = sum(len(files) for _, _, files in os.walk(dir1))
+            total_files += sum(len(files) for _, _, files in os.walk(dir2))
+        else:
+            total_files = len([f for f in os.listdir(dir1) if os.path.isfile(os.path.join(dir1, f))])
+            total_files += len([f for f in os.listdir(dir2) if os.path.isfile(os.path.join(dir2, f))])
         processed_files = 0
         
         # First directory scan
         self.update_progress(0, total_files, "Scanning first directory...")
-        for root, _, files in os.walk(dir1):
+        if self.include_subfolders.get():
+            walk_iter = os.walk(dir1)
+        else:
+            # Only process files in the root directory
+            walk_iter = [(dir1, [], [f for f in os.listdir(dir1) if os.path.isfile(os.path.join(dir1, f))])]
+            
+        for root, _, files in walk_iter:
             for filename in files:
                 filepath = os.path.join(root, filename)
                 processed_files += 1
@@ -299,9 +315,15 @@ class FileComparisonUI:
         self.progress_var.set(0)
         
         # Build hash map for files2 for faster lookup
-        files2_map = {}
+        if self.include_subfolders.get():
+            walk_iter = os.walk(dir2)
+        else:
+            # Only process files in the root directory
+            walk_iter = [(dir2, [], [f for f in os.listdir(dir2) if os.path.isfile(os.path.join(dir2, f))])]
+            
         self.update_progress(0, total_files, "Building hash map for second directory...")
-        for root, _, files in os.walk(dir2):
+        processed_files = 0
+        for root, _, files in walk_iter:
             for filename in files:
                 filepath = os.path.join(root, filename)
                 processed_files += 1
