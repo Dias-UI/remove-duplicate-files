@@ -242,11 +242,12 @@ class FileComparisonUI:
                     file_info = {
                         'path': filepath,
                         'name': filename,
-                        'size': os.path.getsize(filepath)
+                        'size': os.path.getsize(filepath),
+                        'ctime': os.path.getctime(filepath)  # Add creation time
                     }
                     files.append(file_info)
-                    
-                    # Group files by hash instead of name
+
+                    # Group files by hash
                     if file_hash in hash_map:
                         hash_map[file_hash].append(file_info)
                     else:
@@ -258,15 +259,19 @@ class FileComparisonUI:
         self.matches = []
         for file_group in hash_map.values():
             if len(file_group) > 1:  # If multiple files have the same hash
-                first_file = file_group[0]
-                for other_file in file_group[1:]:
-                    if os.path.getsize(first_file['path']) == os.path.getsize(other_file['path']):
+                # Sort the group by creation time, keeping the oldest file as the original
+                file_group.sort(key=lambda x: x['ctime'])
+                original = file_group[0]  # The oldest file is considered the original
+                
+                # Create matches between the original and each duplicate
+                for duplicate in file_group[1:]:
+                    if os.path.getsize(original['path']) == os.path.getsize(duplicate['path']):
                         self.matches.append({
-                            'file1': first_file['path'],
-                            'file2': other_file['path'],
-                            'is_image': first_file['path'].lower().endswith(self.supported_types['images']),
-                            'name1': first_file['name'],
-                            'name2': other_file['name']
+                            'file1': original['path'],  # Original file (will be kept)
+                            'file2': duplicate['path'],  # Duplicate file (will be deleted)
+                            'is_image': original['path'].lower().endswith(self.supported_types['images']),
+                            'name1': original['name'],
+                            'name2': duplicate['name']
                         })
 
         # Update UI
